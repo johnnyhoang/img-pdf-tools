@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF & Image Studio - Lắp Ghép & Chuyển Đổi Vào Ra Image - PDF</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css?v=3.6">
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-left">
+            <div class="logo-icon">
+                <i class="fa-solid fa-photo-film"></i>
+            </div>
+            <div class="app-titles">
+                <span class="app-brand">PDF & Image Studio</span>
+                <span class="app-tagline">Lắp ghép, sắp xếp và chuyển đổi 2 chiều giữa Image & PDF</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="btn btn-subtle" id="btnAiConfig" title="Cấu hình ChatGPT API Key để AI tự động đặt tên file">
+                <i class="fa-solid fa-key text-accent"></i> <span id="lblConfigStatus">ChatGPT Key</span>
+            </button>
+            <button class="btn btn-subtle" id="btnHelp" title="Hướng dẫn sử dụng">
+                <i class="fa-regular fa-circle-question"></i> Hướng dẫn
+            </button>
+            <button class="btn btn-success" id="btnHeaderSavePdf" style="display: none;" title="Lưu trực tiếp vào file PDF đang mở">
+                <i class="fa-solid fa-floppy-disk"></i> Lưu PDF
+            </button>
+            <button class="btn btn-secondary" id="btnOpenFilesHeader" title="Mở file PDF hoặc ảnh">
+                <i class="fa-regular fa-folder-open"></i> Mở tệp
+            </button>
+            <button class="btn btn-secondary" id="btnPickFolderHeader" title="Mở thư mục">
+                <i class="fa-solid fa-folder-tree"></i> Mở thư mục
+            </button>
+            <button class="btn btn-primary" id="btnPickFilesHeader" title="Thêm tệp tin">
+                <i class="fa-solid fa-plus"></i> Thêm tệp tin
+            </button>
+            <input type="file" id="fileInputHeader" multiple accept="image/*,.pdf,application/pdf" hidden>
+        </div>
+    </header>
+
+    <div class="app-container">
+        <!-- CỘT TRÁI: KHÔNG GIAN LÀM VIỆC VÀ LẮP GHÉP CÁC TRANG -->
+        <main class="workbench-section">
+            <!-- THANH ĐIỀU HƯỚNG & CÔNG CỤ NHANH -->
+            <div class="toolbar-card">
+                <div class="toolbar-left">
+                    <div class="page-count-badge">
+                        <i class="fa-solid fa-layer-group"></i>
+                        <span id="pageCountText">0 trang</span>
+                    </div>
+                    <div class="selection-tools">
+                        <label class="chk-container" title="Chọn hoặc bỏ chọn tất cả">
+                            <input type="checkbox" id="chkSelectAll">
+                            <span class="checkmark"></span>
+                            <span class="chk-label" id="lblSelectCount">Chọn tất cả</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="toolbar-right">
+                    <div class="filter-dropdown-wrap">
+                        <button class="btn-tool" id="btnPageSetupDropdown" title="Khổ trang tài liệu">
+                            <i class="fa-solid fa-file-invoice text-accent"></i> <span id="lblCurrentPageSize">Khổ trang: A4 Dọc</span> <i class="fa-solid fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-menu" id="pageSetupMenu">
+                            <button class="dropdown-item active" data-pagesize="A4" data-orientation="portrait"><i class="fa-solid fa-file mr-1"></i> A4 Dọc</button>
+                            <button class="dropdown-item" data-pagesize="A4" data-orientation="landscape"><i class="fa-solid fa-file mr-1"></i> A4 Ngang</button>
+                            <button class="dropdown-item" data-pagesize="fit_image"><i class="fa-regular fa-image mr-1"></i> Vừa khít ảnh</button>
+                        </div>
+                    </div>
+                    <button class="btn-tool" id="btnBatchResize" title="Chỉnh kích thước riêng hoặc thu phóng đối tượng ảnh">
+                        <i class="fa-solid fa-up-right-and-down-left-from-center text-accent"></i> Đổi cỡ ảnh
+                    </button>
+                    <button class="btn-tool" id="btnRotateSelected" title="Xoay 90 độ theo chiều kim đồng hồ">
+                        <i class="fa-solid fa-rotate-right"></i> Xoay 90°
+                    </button>
+                    <button class="btn-tool" id="btnReverseOrder" title="Đảo ngược thứ tự danh sách trang">
+                        <i class="fa-solid fa-arrow-down-up-across-line"></i> Đảo thứ tự
+                    </button>
+                    
+                    <div class="filter-dropdown-wrap">
+                        <button class="btn-tool" id="btnBatchFilter" title="Áp dụng bộ lọc cho các trang đã chọn">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Bộ lọc <i class="fa-solid fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-menu" id="batchFilterMenu">
+                            <button class="dropdown-item" data-filter="original">Ảnh gốc (Original)</button>
+                            <button class="dropdown-item" data-filter="sharp_text">Làm nét văn bản</button>
+                            <button class="dropdown-item" data-filter="clean_bg">Làm trắng sạch nền</button>
+                            <button class="dropdown-item" data-filter="bw_scan">Quét đen trắng (B&W)</button>
+                            <button class="dropdown-item" data-filter="magic_color">Màu tươi sáng (Magic Color)</button>
+                            <button class="dropdown-item" data-filter="high_contrast_stamp">Nổi bật con dấu / Chữ ký</button>
+                            <button class="dropdown-item" data-filter="restore_yellowed">Khử ố vàng giấy cũ</button>
+                            <button class="dropdown-item" data-filter="remove_bleedthrough">Khử mực thấm mặt sau</button>
+                        </div>
+                    </div>
+
+                    <button class="btn-tool btn-danger-subtle" id="btnDeleteSelected" title="Xóa các trang đang chọn">
+                        <i class="fa-regular fa-trash-can"></i> Xóa chọn
+                    </button>
+                    <button class="btn-tool btn-danger-ghost" id="btnClearAll" title="Xóa toàn bộ làm lại từ đầu">
+                        <i class="fa-solid fa-trash"></i> Làm mới
+                    </button>
+                </div>
+            </div>
+
+            <!-- VÙNG KÉO THẢ TỆP TIN CHÍNH (KHI RỖNG HOẶC THÊM MỚI) -->
+            <div class="dropzone" id="mainDropzone">
+                <input type="file" id="fileInputDrop" multiple accept="image/*,.pdf,application/pdf" hidden>
+                <div class="dropzone-content">
+                    <div class="dropzone-icon">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                    </div>
+                    <h3 class="dropzone-title">Kéo & thả file ảnh hoặc file PDF vào đây</h3>
+                    <p class="dropzone-desc">Hỗ trợ tải lên nhiều file cùng lúc (JPG, PNG, WEBP, PDF). File PDF sẽ tự động tách thành từng trang độc lập để bạn tự do sắp xếp, ghép lại thành file mới.</p>
+                    <div class="dropzone-actions">
+                        <button class="btn btn-primary btn-lg" type="button" id="btnDropzonePickFiles">
+                            <i class="fa-solid fa-file-circle-plus"></i> Chọn tệp
+                        </button>
+                        <button class="btn btn-secondary btn-lg" type="button" id="btnDropzonePickFolder">
+                            <i class="fa-solid fa-folder-open"></i> Mở thư mục
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LƯỚI DANH SÁCH CÁC TRANG (PAGE GRID) -->
+            <div class="pages-grid" id="pagesGrid" style="display: none;">
+                <!-- Các thẻ trang (Page Cards) sẽ được nạp động tại đây -->
+            </div>
+        </main>
+
+        <!-- CỘT PHẢI: KHÔNG GIAN XUẤT SẢN PHẨM CUỐI CÙNG (OUTPUT STUDIO) -->
+        <aside class="output-section">
+            <div class="output-card">
+                <div class="output-header">
+                    <span class="output-title"><i class="fa-solid fa-box-archive text-accent"></i> Xuất Sản Phẩm</span>
+                    <span class="output-sub">Đồng nhất kích thước trang & Ước lượng dung lượng</span>
+                </div>
+
+                <!-- TABS LỰA CHỌN ĐẦU RA -->
+                <div class="output-tabs">
+                    <button class="output-tab active" data-tab="tab-pdf">
+                        <i class="fa-solid fa-file-pdf"></i> Xuất PDF
+                    </button>
+                    <button class="output-tab" data-tab="tab-stitch">
+                        <i class="fa-solid fa-table-cells-large"></i> Ghép 1 Ảnh
+                    </button>
+                    <button class="output-tab" data-tab="tab-images">
+                        <i class="fa-regular fa-images"></i> Xuất Bộ Ảnh
+                    </button>
+                </div>
+
+                <div class="output-tab-contents">
+                    <!-- ==================== TAB 1: XUẤT FILE PDF ==================== -->
+                    <div class="tab-pane active" id="tab-pdf">
+                        <!-- BANNER FILE PDF GỐC ĐANG MỞ -->
+                        <div class="source-pdf-banner" id="sourcePdfBanner" style="display: none;">
+                            <div class="source-banner-left">
+                                <div class="source-banner-icon">
+                                    <i class="fa-solid fa-file-pdf"></i>
+                                </div>
+                                <div class="source-banner-info">
+                                    <div class="source-banner-tag">File PDF gốc đang mở</div>
+                                    <div class="source-banner-name" id="sourcePdfName">--.pdf</div>
+                                    <div class="source-banner-path" id="sourcePdfFolder">--</div>
+                                </div>
+                            </div>
+                            <div class="source-banner-action">
+                                <button class="btn btn-success" id="btnSavePdfDirect" type="button" title="Lưu trực tiếp vào file này (tự động tạo bản sao lưu .bak an toàn)">
+                                    <i class="fa-solid fa-floppy-disk"></i> Lưu đè file gốc
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Khổ trang tài liệu</label>
+                            <div class="seg-layout-buttons" id="docPageSizeButtons">
+                                <button type="button" class="btn-seg-layout active" data-size="A4" data-orient="portrait">
+                                    <i class="fa-solid fa-file"></i>
+                                    <span>A4 Dọc</span>
+                                </button>
+                                <button type="button" class="btn-seg-layout" data-size="A4" data-orient="landscape">
+                                    <i class="fa-solid fa-file"></i>
+                                    <span>A4 Ngang</span>
+                                </button>
+                                <button type="button" class="btn-seg-layout" data-size="fit_image">
+                                    <i class="fa-regular fa-image"></i>
+                                    <span>Vừa khít ảnh</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="pdfQuality">Mức nén & Chất lượng PDF</label>
+                            <select class="form-select" id="pdfQuality">
+                                <option value="95">Bản in siêu nét (DPI cao 300 - Dung lượng lớn)</option>
+                                <option value="85" selected>Chuẩn cân bằng (150 DPI - Sắc nét & Nhẹ)</option>
+                                <option value="70">Tối ưu kích thước (Nhẹ - Dễ gửi email, Zalo)</option>
+                            </select>
+                        </div>
+
+                        <!-- HỘP ƯỚC LƯỢNG DUNG LƯỢNG PDF -->
+                        <div class="estimate-box">
+                            <div class="estimate-item">
+                                <span class="estimate-label"><i class="fa-solid fa-calculator text-accent"></i> Dung lượng PDF ước tính:</span>
+                                <span class="estimate-val" id="pdfEstimatedSize">-- KB</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="form-label-row">
+                                <label class="form-label" for="pdfFilename">Tên tệp xuất</label>
+                                <button class="btn-ai-magic" id="btnAiSuggestPdfName" type="button" title="Dùng AI phân tích tài liệu và gợi ý tên chuẩn">
+                                    <i class="fa-solid fa-wand-magic-sparkles text-accent"></i> <span>AI Gợi ý tên</span>
+                                </button>
+                            </div>
+                            <div class="input-with-ext">
+                                <input type="text" class="form-input" id="pdfFilename" value="tai_lieu_dong_nhat" placeholder="Nhập tên tệp...">
+                                <span class="input-ext">.pdf</span>
+                            </div>
+                            <div class="name-chips-wrap" id="pdfNameChips" style="display: none;"></div>
+                        </div>
+
+                        <div class="export-action-box">
+                            <button class="btn btn-primary btn-block btn-lg" id="btnExportPdf">
+                                <i class="fa-solid fa-file-arrow-down"></i> Tải xuống file PDF
+                            </button>
+                            <button class="btn btn-secondary btn-block" id="btnSavePdfAs" type="button">
+                                <i class="fa-solid fa-floppy-disk"></i> Lưu file PDF trên máy (Save As...)
+                            </button>
+                            <span class="action-note">Mọi trang đều được căn chỉnh vừa vặn với kích cỡ đồng nhất tuyệt đối.</span>
+                        </div>
+                    </div>
+
+                    <!-- ==================== TAB 2: GHÉP 1 ẢNH (STITCHER) ==================== -->
+                    <div class="tab-pane" id="tab-stitch">
+                        <div class="form-group">
+                            <label class="form-label">Kiểu bố cục ảnh ghép</label>
+                            <div class="seg-layout-buttons">
+                                <button class="btn-seg-layout active" data-layout="grid">
+                                    <i class="fa-solid fa-table-cells"></i>
+                                    <span>Lưới (Grid)</span>
+                                </button>
+                                <button class="btn-seg-layout" data-layout="vertical">
+                                    <i class="fa-solid fa-arrows-up-down"></i>
+                                    <span>Dải dọc dài</span>
+                                </button>
+                                <button class="btn-seg-layout" data-layout="horizontal">
+                                    <i class="fa-solid fa-arrows-left-right"></i>
+                                    <span>Hàng ngang</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- CÀI ĐẶT BỐ CỤC LƯỚI (CHỈ HIỆN KHI CHỌN GRID) -->
+                        <div class="grid-specific-settings" id="stitchGridSettings">
+                            <div class="form-group">
+                                <label class="form-label">Số cột hiển thị:</label>
+                                <div class="col-count-chips" id="stitchColsChips">
+                                    <button class="chip-btn" data-cols="2">2 cột</button>
+                                    <button class="chip-btn active" data-cols="3">3 cột</button>
+                                    <button class="chip-btn" data-cols="4">4 cột</button>
+                                    <button class="chip-btn" data-cols="5">5 cột</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Bố trí hàng cuối (khi thiếu cột):</label>
+                                <div class="align-chips" id="stitchAlignChips">
+                                    <button class="chip-btn active" data-align="center">Căn giữa cân đối</button>
+                                    <button class="chip-btn" data-align="left">Căn từ lề trái</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid-two-cols">
+                            <div class="form-group">
+                                <label class="form-label" for="selStitchSpacing">Khoảng cách (px)</label>
+                                <select class="form-select" id="selStitchSpacing">
+                                    <option value="0">0 px (Dính liền)</option>
+                                    <option value="12">12 px (Hẹp)</option>
+                                    <option value="24" selected>24 px (Tiêu chuẩn)</option>
+                                    <option value="40">40 px (Rộng)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="selStitchPadding">Lề bao quanh (px)</label>
+                                <select class="form-select" id="selStitchPadding">
+                                    <option value="0">0 px (Không lề)</option>
+                                    <option value="16">16 px (Nhỏ)</option>
+                                    <option value="32" selected>32 px (Chuẩn)</option>
+                                    <option value="48">48 px (Rộng)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid-two-cols">
+                            <div class="form-group">
+                                <label class="form-label" for="selStitchBg">Màu nền viền</label>
+                                <select class="form-select" id="selStitchBg">
+                                    <option value="#ffffff" selected>Trắng sáng (#fff)</option>
+                                    <option value="#f1f5f9">Xám nhạt (#f1f5f9)</option>
+                                    <option value="#0f172a">Đen huyền (#0f172a)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="selStitchFormat">Định dạng xuất</label>
+                                <select class="form-select" id="selStitchFormat">
+                                    <option value="jpeg" selected>JPEG (Nhẹ, tối ưu)</option>
+                                    <option value="png">PNG (Trong suốt, nét)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="checkbox-row">
+                            <label class="chk-container">
+                                <input type="checkbox" id="chkStitchBorder" checked>
+                                <span class="checkmark"></span>
+                                <span class="chk-label">Kẻ viền mỏng quanh từng trang để tách biệt</span>
+                            </label>
+                        </div>
+
+                        <!-- KHUNG LIVE PREVIEW ẢNH GHÉP -->
+                        <div class="stitch-preview-box">
+                            <div class="stitch-preview-header">
+                                <span class="stitch-live-label"><i class="fa-solid fa-eye text-accent"></i> Xem trước trực quan</span>
+                                <div class="stitch-preview-tools">
+                                    <span class="preview-dim-badge" id="stitchDimBadge">-- x -- px</span>
+                                    <button class="btn-icon-mini" id="btnRefreshStitchPreview" title="Cập nhật bản xem trước">
+                                        <i class="fa-solid fa-arrows-rotate"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="stitch-canvas-viewport" id="stitchCanvasViewport">
+                                <div class="stitch-loading-indicator" id="stitchLoading" style="display: none;">
+                                    <i class="fa-solid fa-circle-notch fa-spin"></i>
+                                    <span>Đang kết xuất ảnh ghép...</span>
+                                </div>
+                                <img id="stitchPreviewImage" class="stitch-preview-img" src="" alt="Xem trước ảnh ghép" style="display: none;">
+                                <div class="stitch-placeholder" id="stitchPlaceholder">
+                                    <i class="fa-regular fa-image"></i>
+                                    <span>Nạp các trang và bấm xem trước</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="export-action-box mt-3">
+                            <div class="btn-group-dual">
+                                <button class="btn btn-primary" id="btnDownloadStitch">
+                                    <i class="fa-solid fa-download"></i> Tải ảnh ghép
+                                </button>
+                                <button class="btn btn-secondary" id="btnCopyStitchClipboard" title="Sao chép ảnh vào bộ nhớ tạm">
+                                    <i class="fa-regular fa-copy"></i> Sao chép
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ==================== TAB 3: XUẤT TOÀN BỘ ẢNH (ZIP & NÉN) ==================== -->
+                    <div class="tab-pane" id="tab-images">
+                        <div class="compression-header-badge">
+                            <i class="fa-solid fa-sliders text-accent"></i>
+                            <strong>Tùy chọn Nén & Tối ưu dung lượng ảnh</strong>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="form-label-row">
+                                <label class="form-label" for="zipQualitySlider">Mức chất lượng ảnh nén</label>
+                                <span class="quality-display-val" id="zipQualityDisplay">85%</span>
+                            </div>
+                            <input type="range" class="form-range" id="zipQualitySlider" min="20" max="100" step="5" value="85">
+                            <div class="range-labels">
+                                <span>20% (Siêu nhẹ)</span>
+                                <span>50%</span>
+                                <span>85% (Tiêu chuẩn)</span>
+                                <span>100% (Gốc)</span>
+                            </div>
+                        </div>
+
+                        <div class="grid-two-cols">
+                            <div class="form-group">
+                                <label class="form-label" for="zipFormat">Định dạng ảnh</label>
+                                <select class="form-select" id="zipFormat">
+                                    <option value="jpeg" selected>JPEG (.jpg) - Nhẹ nhất</option>
+                                    <option value="webp">WEBP (.webp) - Hiện đại</option>
+                                    <option value="png">PNG (.png) - Giữ nét 100%</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="zipMaxDim">Giới hạn kích thước</label>
+                                <select class="form-select" id="zipMaxDim">
+                                    <option value="0" selected>Giữ nguyên độ phân giải</option>
+                                    <option value="2560">2560 px (Chuẩn 2K)</option>
+                                    <option value="1920">1920 px (Chuẩn Full HD)</option>
+                                    <option value="1280">1280 px (Chuẩn HD gọn)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- HỘP ƯỚC LƯỢNG KÍCH THƯỚC ẢNH THỜI GIAN THỰC -->
+                        <div class="estimate-card">
+                            <div class="estimate-card-header">
+                                <span class="estimate-title"><i class="fa-solid fa-gauge-high text-accent"></i> Ước lượng kích thước thực tế</span>
+                                <span class="estimate-status" id="estimateStatus">Sẵn sàng</span>
+                            </div>
+                            <div class="estimate-stats-grid">
+                                <div class="estimate-stat-item">
+                                    <span class="stat-caption">Tổng dung lượng gói:</span>
+                                    <strong class="stat-number highlight" id="estTotalSize">-- KB</strong>
+                                </div>
+                                <div class="estimate-stat-item">
+                                    <span class="stat-caption">Trung bình mỗi ảnh:</span>
+                                    <strong class="stat-number" id="estAvgSize">-- KB</strong>
+                                </div>
+                                <div class="estimate-stat-item">
+                                    <span class="stat-caption">Độ phân giải dự kiến:</span>
+                                    <strong class="stat-number" id="estDim">-- × -- px</strong>
+                                </div>
+                                <div class="estimate-stat-item">
+                                    <span class="stat-caption">Số lượng ảnh xuất:</span>
+                                    <strong class="stat-number" id="estCount">0 ảnh</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="form-label-row">
+                                <label class="form-label" for="zipFilename">Tên tệp ZIP</label>
+                                <button class="btn-ai-magic" id="btnAiSuggestZipName" type="button" title="Dùng AI phân tích tài liệu và gợi ý tên chuẩn">
+                                    <i class="fa-solid fa-wand-magic-sparkles text-accent"></i> <span>AI Gợi ý tên</span>
+                                </button>
+                            </div>
+                            <div class="input-with-ext">
+                                <input type="text" class="form-input" id="zipFilename" value="bo_anh_da_nen" placeholder="Nhập tên tệp ZIP...">
+                                <span class="input-ext">.zip</span>
+                            </div>
+                            <div class="name-chips-wrap" id="zipNameChips" style="display: none;"></div>
+                        </div>
+
+                        <div class="export-action-box">
+                            <button class="btn btn-primary btn-block btn-lg" id="btnExportZip">
+                                <i class="fa-solid fa-file-zipper"></i> Tải xuống gói ZIP các ảnh
+                            </button>
+                            <span class="action-note">Tất cả ảnh sẽ được đánh số thứ tự chuẩn (01, 02, 03...) theo đúng trình tự bạn xếp.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- MODAL THIẾT LẬP TRANG & CHỈNH SỬA HÌNH ẢNH (PAGE EDITING & IMAGE STUDIO) -->
+    <div class="modal-backdrop" id="cropModal" style="display: none;">
+        <div class="modal-dialog modal-crop-dialog">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <span class="modal-title" id="cropModalTitle"><i class="fa-solid fa-wand-magic-sparkles text-accent"></i> Chỉnh Sửa Ảnh</span>
+                    <span class="modal-subtitle" id="cropModalSubtitle">--</span>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-subtle btn-sm" id="btnCropReset" title="Khôi phục gốc">
+                        <i class="fa-solid fa-rotate-left"></i> Khôi phục gốc
+                    </button>
+                    <button class="btn-icon-subtle modal-close" id="cropModalCloseBtn">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-body crop-modal-body">
+                <!-- CỘT TRÁI: VÙNG CANVAS CHẤM GÓC & XEM TRƯỚC -->
+                <div class="crop-stage-col">
+                    <!-- Thanh công cụ chấm góc & xoay -->
+                    <div class="crop-stage-toolbar">
+                        <button type="button" class="btn-stage-tool" id="btnAutoDetectCorners" title="Tự động nhận diện 4 góc mép giấy">
+                            <i class="fa-solid fa-expand text-accent"></i> Nhận diện góc
+                        </button>
+                        <button type="button" class="btn-stage-tool" id="btnToggleBookSpread" title="Chuyển đổi giữa 4 góc đơn trang và 6 điểm gáy sách (2 trang/Hộ chiếu)">
+                            <i class="fa-solid fa-book-open"></i> <span id="lblToggleBookSpread">2 trang (Gáy giữa)</span>
+                        </button>
+                        <button type="button" class="btn-stage-tool" id="btnFullFrameCorners" title="Đặt 4 góc bao trọn ảnh">
+                            <i class="fa-solid fa-border-all"></i> Trọn ảnh
+                        </button>
+                        <div class="stage-tool-divider"></div>
+                        <button type="button" class="btn-stage-tool" id="btnTrimShrink" title="Thu hẹp lề cắt (-2%)">
+                            <i class="fa-solid fa-compress"></i> Thu lề
+                        </button>
+                        <button type="button" class="btn-stage-tool" id="btnTrimExpand" title="Giãn rộng lề cắt (+2%)">
+                            <i class="fa-solid fa-up-right-and-down-left-from-center"></i> Giãn lề
+                        </button>
+                        <div class="stage-tool-divider"></div>
+                        <button type="button" class="btn-stage-tool" id="btnModalRotateLeft" title="Xoay trái 90°">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </button>
+                        <button type="button" class="btn-stage-tool" id="btnModalRotateRight" title="Xoay phải 90°">
+                            <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Khung Canvas tương tác chấm góc -->
+                    <div class="crop-canvas-viewport" id="cropCanvasViewport">
+                        <canvas id="cropCanvas"></canvas>
+                        
+                        <!-- Kính lúp phóng to khi kéo chấm góc -->
+                        <div class="crop-mag-lens" id="cropMagLens" style="display: none;">
+                            <canvas id="cropMagCanvas" width="120" height="120"></canvas>
+                            <span class="crop-mag-label" id="cropMagLabel">Góc trên - trái</span>
+                        </div>
+                    </div>
+
+                    <div class="crop-size-badge" id="cropNewSizeBadge">
+                        --
+                    </div>
+                </div>
+
+                <!-- CỘT PHẢI: BẢNG ĐIỀU KHIỂN CHỈNH MÀU SÁNG TỐI & THU PHÓNG -->
+                <div class="crop-controls-col">
+                    <!-- NHÓM 1: CHỈNH MÀU & ĐỘ SÁNG / TƯƠNG PHẢN -->
+                    <div class="crop-section-card">
+                        <div class="crop-card-header">
+                            <i class="fa-solid fa-sliders text-accent"></i>
+                            <strong>Màu sắc & Ánh sáng</strong>
+                        </div>
+
+                        <!-- Bộ lọc màu -->
+                        <div class="form-group mt-2">
+                            <label class="form-label" for="selModalFilterMode">Bộ lọc tài liệu:</label>
+                            <select class="form-select" id="selModalFilterMode">
+                                <option value="original">Ảnh gốc (Original)</option>
+                                <option value="sharp_text">Làm nét văn bản</option>
+                                <option value="clean_bg">Làm trắng sạch nền</option>
+                                <option value="bw_scan">Quét đen trắng (B&W)</option>
+                                <option value="magic_color">Màu tươi sáng (Magic Color)</option>
+                                <option value="high_contrast_stamp">Nổi bật con dấu / Chữ ký</option>
+                                <option value="restore_yellowed">Khử ố vàng giấy cũ</option>
+                                <option value="remove_bleedthrough">Khử mực thấm mặt sau</option>
+                            </select>
+                        </div>
+
+                        <!-- Độ sáng -->
+                        <div class="form-group mt-2">
+                            <div class="form-label-row">
+                                <label class="form-label" for="rngBrightness"><i class="fa-solid fa-sun text-warning mr-1"></i> Độ sáng:</label>
+                                <span class="val-pill" id="valBrightness">0</span>
+                            </div>
+                            <input type="range" class="form-range" id="rngBrightness" min="-50" max="50" step="1" value="0">
+                        </div>
+
+                        <!-- Độ tương phản -->
+                        <div class="form-group mt-2">
+                            <div class="form-label-row">
+                                <label class="form-label" for="rngContrast"><i class="fa-solid fa-circle-half-stroke text-accent mr-1"></i> Độ tương phản:</label>
+                                <span class="val-pill" id="valContrast">0%</span>
+                            </div>
+                            <input type="range" class="form-range" id="rngContrast" min="0" max="100" step="2" value="0">
+                        </div>
+                    </div>
+
+                    <!-- NHÓM 2: KHỔ CHUẨN & THU PHÓNG -->
+                    <div class="crop-section-card">
+                        <div class="crop-card-header">
+                            <i class="fa-solid fa-up-right-and-down-left-from-center text-accent"></i>
+                            <strong>Khổ chuẩn & Kích thước</strong>
+                        </div>
+
+                        <!-- 3 Presets chuẩn theo yêu cầu: Passport, Passport 2 mặt, Card -->
+                        <div class="form-group mt-2">
+                            <label class="form-label">Khổ chuẩn:</label>
+                            <div class="quick-preset-chips-row" id="docTypePresets">
+                                <button type="button" class="chip-btn" data-preset="passport">Passport</button>
+                                <button type="button" class="chip-btn" data-preset="passport_double">Passport 2 mặt</button>
+                                <button type="button" class="chip-btn" data-preset="card">Card</button>
+                            </div>
+                        </div>
+
+                        <!-- Thu phóng theo % -->
+                        <div class="form-group mt-2">
+                            <div class="form-label-row">
+                                <label class="form-label">Thu phóng:</label>
+                                <span class="val-pill" id="valResizeScale">100%</span>
+                            </div>
+                            <input type="range" class="form-range mt-1" id="rngResizeScale" min="15" max="250" step="1" value="100">
+                        </div>
+
+                        <!-- Nhập W x H px -->
+                        <div class="grid-two-cols mt-2">
+                            <div class="form-group">
+                                <label class="form-label" for="numResizeW">Rộng (W):</label>
+                                <input type="number" class="form-input font-bold" id="numResizeW" value="1000">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="numResizeH">Cao (H):</label>
+                                <input type="number" class="form-input font-bold" id="numResizeH" value="1000">
+                            </div>
+                        </div>
+
+                        <div class="checkbox-row mt-2">
+                            <label class="chk-container">
+                                <input type="checkbox" id="chkLockAspect" checked>
+                                <span class="checkmark"></span>
+                                <span class="chk-label" style="font-weight: 600;">Khóa tỷ lệ</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- NÚT ÁP DỤNG -->
+                    <div class="btn-group-dual mt-2">
+                        <button class="btn btn-primary" id="btnApplyResize">
+                            <i class="fa-solid fa-check"></i> Áp dụng
+                        </button>
+                        <button class="btn btn-secondary" id="btnApplyResizeAllSelected" title="Áp dụng màu & kích thước cho các trang đang chọn">
+                            Cho trang đã chọn
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PHÓNG TO CHI TIẾT TRANG (LIGHTBOX PREVIEW) -->
+    <div class="modal-backdrop" id="previewModal" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <div class="modal-title-row">
+                        <span class="modal-title" id="modalPageTitle">Chi tiết trang</span>
+                        <span class="modal-page-counter" id="modalPageCounter">Trang 1 / 1</span>
+                    </div>
+                    <span class="modal-subtitle" id="modalPageDim">-- x -- px</span>
+                </div>
+                <div class="modal-actions">
+                    <div class="modal-nav-header-group">
+                        <button class="btn-icon-subtle" id="modalHeaderPrevBtn" title="Trang trước (Phím ←)">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <button class="btn-icon-subtle" id="modalHeaderNextBtn" title="Trang sau (Phím →)">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                    <div class="modal-divider"></div>
+                    <button class="btn-subtle" id="modalOpenCropBtn" title="Chỉnh riêng kích thước trang này">
+                        <i class="fa-solid fa-up-right-and-down-left-from-center"></i> Cắt / Đổi cỡ
+                    </button>
+                    <button class="btn-icon-subtle" id="modalRotateBtn" title="Xoay trang 90°">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                    <button class="btn-icon-subtle" id="modalDownloadBtn" title="Tải ảnh trang này">
+                        <i class="fa-solid fa-download"></i>
+                    </button>
+                    <button class="btn-icon-subtle modal-close" id="modalCloseBtn" title="Đóng (Esc)">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-body modal-preview-body">
+                <button class="modal-nav-arrow btn-nav-prev" id="modalPrevBtn" title="Trang trước (Phím ←)">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <div class="modal-image-wrap">
+                    <img id="modalPreviewImg" src="" alt="Xem trước lớn">
+                </div>
+                <button class="modal-nav-arrow btn-nav-next" id="modalNextBtn" title="Trang sau (Phím →)">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CẤU HÌNH AI / CHATGPT API KEY -->
+    <div class="modal-backdrop" id="aiConfigModal" style="display: none;">
+        <div class="modal-dialog" style="max-width: 480px;">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <span class="modal-title"><i class="fa-solid fa-key text-accent"></i> Cấu hình ChatGPT API Key</span>
+                    <span class="modal-subtitle">Gợi ý tên file tự động và phân tích nội dung tài liệu</span>
+                </div>
+                <button class="btn-icon-subtle modal-close" id="aiConfigModalCloseBtn" title="Đóng">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="background: #ffffff; padding: 22px; display: flex; flex-direction: column; gap: 14px;">
+                <div class="form-group">
+                    <label class="form-label" for="txtOpenAiKey">OpenAI / ChatGPT API Key:</label>
+                    <input type="password" class="form-input" id="txtOpenAiKey" placeholder="sk-proj-...">
+                    <span class="form-subtext" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; display: block; line-height: 1.4;">
+                        <i class="fa-solid fa-circle-info mr-1"></i> Key được lưu an toàn trong tệp <code>config.json</code> ở thư mục phần mềm (bạn có thể dán trực tiếp vào đây hoặc sửa file <code>config.json</code>).
+                    </span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="selAiModel">Mô hình AI (Model):</label>
+                    <select class="form-select" id="selAiModel">
+                        <option value="gpt-4o-mini" selected>gpt-4o-mini (Siêu nhanh, tiết kiệm chi phí - Khuyên dùng)</option>
+                        <option value="gpt-4o">gpt-4o (Thông minh và sâu sắc nhất)</option>
+                    </select>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+                    <button class="btn btn-secondary" id="btnCancelAiConfig">Hủy</button>
+                    <button class="btn btn-primary" id="btnSaveAiConfig"><i class="fa-solid fa-floppy-disk"></i> Lưu cấu hình</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL XÁC NHẬN RIÊNG (CUSTOM IN-APP CONFIRM DIALOG) -->
+    <div class="modal-backdrop" id="confirmModal" style="display: none;">
+        <div class="modal-dialog" style="max-width: 440px;">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <span class="modal-title" id="confirmModalTitle">
+                        <i class="fa-solid fa-triangle-exclamation text-danger mr-1"></i> Xác nhận
+                    </span>
+                </div>
+                <button class="btn-icon-subtle modal-close" id="confirmModalCloseBtn" title="Đóng">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="background: #ffffff; padding: 20px 22px; color: var(--text-primary); font-size: 0.9rem; line-height: 1.5;" id="confirmModalMessage">
+                Nội dung xác nhận...
+            </div>
+            <div style="padding: 12px 20px; background: #f8fafc; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="btn btn-secondary" id="confirmModalCancelBtn">Hủy bỏ</button>
+                <button class="btn btn-danger" id="confirmModalOkBtn">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL HƯỚNG DẪN SỬ DỤNG RIÊNG (CUSTOM IN-APP HELP MODAL) -->
+    <div class="modal-backdrop" id="helpModal" style="display: none;">
+        <div class="modal-dialog" style="max-width: 580px;">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <span class="modal-title"><i class="fa-solid fa-circle-question text-accent mr-1"></i> Hướng Dẫn Sử Dụng PDF & Image Studio</span>
+                </div>
+                <button class="btn-icon-subtle modal-close" id="helpModalCloseBtn" title="Đóng">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="background: #ffffff; padding: 22px; display: flex; flex-direction: column; gap: 12px; max-height: 70vh; overflow-y: auto;">
+                <div class="help-item">
+                    <strong><i class="fa-solid fa-up-right-and-down-left-from-center text-accent"></i> 1. Chỉnh kích thước riêng từng trang:</strong>
+                    <p style="margin: 4px 0 0 0; font-size: 0.825rem; color: var(--text-secondary); line-height: 1.45;">Nhấp vào kích thước "W × H px" trên thẻ ảnh để mở hộp thoại. Bạn có thể chọn co giãn toàn bộ (không cắt rìa), giữ nguyên tỷ lệ, hoặc cắt lề thừa.</p>
+                </div>
+                <div class="help-item">
+                    <strong><i class="fa-solid fa-bolt text-accent"></i> 2. Đồng bộ khổ ảnh nhanh:</strong>
+                    <p style="margin: 4px 0 0 0; font-size: 0.825rem; color: var(--text-secondary); line-height: 1.45;">Trong hộp thoại chỉnh kích thước, bấm nút kích thước mẫu có sẵn (ví dụ 1700 × 2200 px) để đưa ảnh về cùng kích thước với các trang khác chỉ với 1 cú click.</p>
+                </div>
+                <div class="help-item">
+                    <strong><i class="fa-solid fa-arrows-left-right text-accent"></i> 3. Xem trước & Chuyển trang (Next / Prev):</strong>
+                    <p style="margin: 4px 0 0 0; font-size: 0.825rem; color: var(--text-secondary); line-height: 1.45;">Nhấp vào ảnh để mở xem lớn, dùng 2 nút mũi tên tròn ở 2 bên ảnh hoặc phím mũi tên [←] [→] trên bàn phím để lướt qua các trang.</p>
+                </div>
+                <div class="help-item">
+                    <strong><i class="fa-solid fa-wand-magic-sparkles text-accent"></i> 4. AI Tự Động Đặt Tên File:</strong>
+                    <p style="margin: 4px 0 0 0; font-size: 0.825rem; color: var(--text-secondary); line-height: 1.45;">Bấm "AI Gợi ý tên" tại ô Tên tệp xuất, AI sẽ đọc tài liệu để đặt tên file chuẩn mực (hoặc dán ChatGPT API key vào nút "ChatGPT Key" để phân tích nâng cao).</p>
+                </div>
+                <div class="help-item">
+                    <strong><i class="fa-solid fa-file-pdf text-accent"></i> 5. Xuất PDF Khổ A4 Đồng Nhất:</strong>
+                    <p style="margin: 4px 0 0 0; font-size: 0.825rem; color: var(--text-secondary); line-height: 1.45;">Tự động căn vừa mọi trang tài liệu vào cùng 1 khổ A4 hoàn hảo, không cắt mất rìa và tối ưu dung lượng file siêu nhẹ.</p>
+                </div>
+            </div>
+            <div style="padding: 12px 20px; background: #f8fafc; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+                <button class="btn btn-primary" id="helpModalOkBtn">Đã hiểu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="js/app.js?v=3.5"></script>
+</body>
+</html>
