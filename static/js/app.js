@@ -1847,10 +1847,11 @@
                     triggerAiSuggestName(false);
                 }
             } else {
-                showToast("Không thể tải lên tệp tin.", "error");
+                if (dom.fileInputDrop) dom.fileInputDrop.click();
             }
         } catch (err) {
-            showToast("Có lỗi xảy ra khi chọn tệp.", "error");
+            console.warn("Native file picker failed, falling back to browser file input:", err);
+            if (dom.fileInputDrop) dom.fileInputDrop.click();
         }
     }
 
