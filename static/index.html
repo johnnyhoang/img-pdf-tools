@@ -650,6 +650,19 @@
                     <span class="modal-subtitle" id="modalPageDim">-- x -- px</span>
                 </div>
                 <div class="modal-actions">
+                    <div class="modal-zoom-group">
+                        <button class="btn-icon-subtle" id="modalZoomOutBtn" title="Thu nhỏ (Phím - hoặc cuộn chuột xuống)">
+                            <i class="fa-solid fa-magnifying-glass-minus"></i>
+                        </button>
+                        <span class="zoom-level-badge" id="modalZoomLevelBadge" title="Nhấp để đặt lại 100%">100%</span>
+                        <button class="btn-icon-subtle" id="modalZoomInBtn" title="Phóng to (Phím + hoặc cuộn chuột lên)">
+                            <i class="fa-solid fa-magnifying-glass-plus"></i>
+                        </button>
+                        <button class="btn-icon-subtle" id="modalZoomResetBtn" title="Vừa màn hình (Phím 0)">
+                            <i class="fa-solid fa-compress"></i>
+                        </button>
+                    </div>
+                    <div class="modal-divider"></div>
                     <div class="modal-nav-header-group">
                         <button class="btn-icon-subtle" id="modalHeaderPrevBtn" title="Trang trước (Phím ←)">
                             <i class="fa-solid fa-chevron-left"></i>
@@ -677,12 +690,24 @@
                 <button class="modal-nav-arrow btn-nav-prev" id="modalPrevBtn" title="Trang trước (Phím ←)">
                     <i class="fa-solid fa-chevron-left"></i>
                 </button>
-                <div class="modal-image-wrap">
-                    <img id="modalPreviewImg" src="" alt="Xem trước lớn">
+                <div class="modal-image-wrap" id="modalImageWrap">
+                    <img id="modalPreviewImg" src="" alt="Xem trước lớn" draggable="false">
                 </div>
                 <button class="modal-nav-arrow btn-nav-next" id="modalNextBtn" title="Trang sau (Phím →)">
                     <i class="fa-solid fa-chevron-right"></i>
                 </button>
+                <div class="modal-floating-zoom-bar">
+                    <button class="floating-zoom-btn" id="floatingZoomOut" title="Thu nhỏ (Cuộn chuột xuống hoặc phím -)">
+                        <i class="fa-solid fa-minus"></i>
+                    </button>
+                    <span class="floating-zoom-text" id="floatingZoomVal" title="Nhấp để đặt lại 100%">100%</span>
+                    <button class="floating-zoom-btn" id="floatingZoomIn" title="Phóng to (Cuộn chuột lên hoặc phím +)">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                    <button class="floating-zoom-btn btn-zoom-fit" id="floatingZoomFit" title="Đặt lại vừa khít màn hình">
+                        <i class="fa-solid fa-expand mr-1"></i> Vừa khít
+                    </button>
+                </div>
             </div>
         </div>
     </div>

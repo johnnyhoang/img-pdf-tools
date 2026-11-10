@@ -144,6 +144,7 @@
         modalPageTitle: document.getElementById("modalPageTitle"),
         modalPageDim: document.getElementById("modalPageDim"),
         modalPageCounter: document.getElementById("modalPageCounter"),
+        modalImageWrap: document.getElementById("modalImageWrap"),
         modalPreviewImg: document.getElementById("modalPreviewImg"),
         modalPrevBtn: document.getElementById("modalPrevBtn"),
         modalNextBtn: document.getElementById("modalNextBtn"),
@@ -153,6 +154,14 @@
         modalRotateBtn: document.getElementById("modalRotateBtn"),
         modalDownloadBtn: document.getElementById("modalDownloadBtn"),
         modalCloseBtn: document.getElementById("modalCloseBtn"),
+        modalZoomOutBtn: document.getElementById("modalZoomOutBtn"),
+        modalZoomLevelBadge: document.getElementById("modalZoomLevelBadge"),
+        modalZoomInBtn: document.getElementById("modalZoomInBtn"),
+        modalZoomResetBtn: document.getElementById("modalZoomResetBtn"),
+        floatingZoomOut: document.getElementById("floatingZoomOut"),
+        floatingZoomVal: document.getElementById("floatingZoomVal"),
+        floatingZoomIn: document.getElementById("floatingZoomIn"),
+        floatingZoomFit: document.getElementById("floatingZoomFit"),
         
         // Toast & Config
         toastContainer: document.getElementById("toastContainer"),
@@ -583,7 +592,84 @@
             }
         });
 
-        // Điều hướng bằng bàn phím (Phím mũi tên Trái / Phải, Esc)
+        // Các nút bấm Phóng to / Thu nhỏ / Vừa màn hình
+        const handleZoomIn = (e) => {
+            if (e) e.stopPropagation();
+            setLightboxZoom(lightboxZoom * 1.25, 0, 0, true);
+        };
+        const handleZoomOut = (e) => {
+            if (e) e.stopPropagation();
+            setLightboxZoom(lightboxZoom / 1.25, 0, 0, true);
+        };
+        const handleZoomReset = (e) => {
+            if (e) e.stopPropagation();
+            resetLightboxZoom(true);
+        };
+
+        if (dom.modalZoomInBtn) dom.modalZoomInBtn.addEventListener("click", handleZoomIn);
+        if (dom.floatingZoomIn) dom.floatingZoomIn.addEventListener("click", handleZoomIn);
+        if (dom.modalZoomOutBtn) dom.modalZoomOutBtn.addEventListener("click", handleZoomOut);
+        if (dom.floatingZoomOut) dom.floatingZoomOut.addEventListener("click", handleZoomOut);
+        if (dom.modalZoomResetBtn) dom.modalZoomResetBtn.addEventListener("click", handleZoomReset);
+        if (dom.floatingZoomFit) dom.floatingZoomFit.addEventListener("click", handleZoomReset);
+        if (dom.modalZoomLevelBadge) dom.modalZoomLevelBadge.addEventListener("click", handleZoomReset);
+        if (dom.floatingZoomVal) dom.floatingZoomVal.addEventListener("click", handleZoomReset);
+
+        // Cuộn chuột để Phóng to / Thu nhỏ ảnh mượt mà (Mouse Wheel Zoom)
+        if (dom.modalImageWrap) {
+            dom.modalImageWrap.addEventListener("wheel", (e) => {
+                e.preventDefault();
+                const rect = dom.modalImageWrap.getBoundingClientRect();
+                const mouseX = e.clientX - (rect.left + rect.width / 2);
+                const mouseY = e.clientY - (rect.top + rect.height / 2);
+                const factor = e.deltaY < 0 ? 1.18 : 0.85;
+                setLightboxZoom(lightboxZoom * factor, mouseX, mouseY, false);
+            }, { passive: false });
+
+            // Nhấp đúp chuột để phóng to 200% hoặc trở lại vừa khít
+            dom.modalImageWrap.addEventListener("dblclick", (e) => {
+                e.preventDefault();
+                if (lightboxZoom > 1.05) {
+                    resetLightboxZoom(true);
+                } else {
+                    const rect = dom.modalImageWrap.getBoundingClientRect();
+                    const mouseX = e.clientX - (rect.left + rect.width / 2);
+                    const mouseY = e.clientY - (rect.top + rect.height / 2);
+                    setLightboxZoom(2.0, mouseX, mouseY, true);
+                }
+            });
+
+            // Kéo chuột để di chuyển ảnh (Pan/Drag) khi đang phóng to
+            dom.modalImageWrap.addEventListener("mousedown", (e) => {
+                if (lightboxZoom <= 1.05) return;
+                isLightboxPanning = true;
+                lightboxStartPointerX = e.clientX;
+                lightboxStartPointerY = e.clientY;
+                lightboxStartPanX = lightboxPanX;
+                lightboxStartPanY = lightboxPanY;
+                applyLightboxTransform(false);
+                e.preventDefault();
+            });
+
+            window.addEventListener("mousemove", (e) => {
+                if (!isLightboxPanning) return;
+                e.preventDefault();
+                const dx = e.clientX - lightboxStartPointerX;
+                const dy = e.clientY - lightboxStartPointerY;
+                lightboxPanX = lightboxStartPanX + dx;
+                lightboxPanY = lightboxStartPanY + dy;
+                applyLightboxTransform(false);
+            });
+
+            window.addEventListener("mouseup", () => {
+                if (isLightboxPanning) {
+                    isLightboxPanning = false;
+                    applyLightboxTransform(false);
+                }
+            });
+        }
+
+        // Điều hướng bằng bàn phím (Phím mũi tên Trái / Phải, +, -, 0, Esc)
         document.addEventListener("keydown", (e) => {
             if (dom.previewModal.style.display !== "none") {
                 if (e.key === "ArrowLeft") {
@@ -592,6 +678,15 @@
                 } else if (e.key === "ArrowRight") {
                     e.preventDefault();
                     navigateLightbox(1);
+                } else if (e.key === "+" || e.key === "=") {
+                    e.preventDefault();
+                    setLightboxZoom(lightboxZoom * 1.25, 0, 0, true);
+                } else if (e.key === "-" || e.key === "_") {
+                    e.preventDefault();
+                    setLightboxZoom(lightboxZoom / 1.25, 0, 0, true);
+                } else if (e.key === "0") {
+                    e.preventDefault();
+                    resetLightboxZoom(true);
                 } else if (e.key === "Escape") {
                     closeModal();
                 }
@@ -2236,11 +2331,70 @@
     }
 
     // ==========================================
-    // MODAL LIGHTBOX XEM CHI TIẾT
+    // MODAL LIGHTBOX XEM CHI TIẾT & ZOOM
     // ==========================================
+    let lightboxZoom = 1.0;
+    let lightboxPanX = 0;
+    let lightboxPanY = 0;
+    let isLightboxPanning = false;
+    let lightboxStartPointerX = 0;
+    let lightboxStartPointerY = 0;
+    let lightboxStartPanX = 0;
+    let lightboxStartPanY = 0;
+
+    function applyLightboxTransform(smooth = true) {
+        if (!dom.modalPreviewImg) return;
+        dom.modalPreviewImg.style.transition = smooth ? "transform 0.15s ease-out, opacity 0.15s ease" : "none";
+        dom.modalPreviewImg.style.transform = `translate(${lightboxPanX}px, ${lightboxPanY}px) scale(${lightboxZoom})`;
+
+        if (dom.modalImageWrap) {
+            if (lightboxZoom > 1.05) {
+                dom.modalImageWrap.style.cursor = isLightboxPanning ? "grabbing" : "grab";
+            } else {
+                dom.modalImageWrap.style.cursor = "zoom-in";
+            }
+        }
+
+        const pct = `${Math.round(lightboxZoom * 100)}%`;
+        if (dom.modalZoomLevelBadge) dom.modalZoomLevelBadge.textContent = pct;
+        if (dom.floatingZoomVal) dom.floatingZoomVal.textContent = pct;
+    }
+
+    function resetLightboxZoom(smooth = true) {
+        lightboxZoom = 1.0;
+        lightboxPanX = 0;
+        lightboxPanY = 0;
+        isLightboxPanning = false;
+        applyLightboxTransform(smooth);
+    }
+
+    function setLightboxZoom(newZoom, mouseRelX = null, mouseRelY = null, smooth = true) {
+        newZoom = Math.max(0.3, Math.min(6.0, newZoom));
+        if (Math.abs(newZoom - 1.0) < 0.05) newZoom = 1.0;
+
+        const oldZoom = lightboxZoom;
+        if (oldZoom === newZoom) return;
+
+        if (mouseRelX !== null && mouseRelY !== null && oldZoom > 0.01) {
+            // Zoom hướng về vị trí chuột
+            const factor = newZoom / oldZoom;
+            lightboxPanX = mouseRelX - (mouseRelX - lightboxPanX) * factor;
+            lightboxPanY = mouseRelY - (mouseRelY - lightboxPanY) * factor;
+        }
+
+        if (newZoom <= 1.0) {
+            lightboxPanX = 0;
+            lightboxPanY = 0;
+        }
+
+        lightboxZoom = newZoom;
+        applyLightboxTransform(smooth);
+    }
+
     function openLightbox(page) {
         if (!page) return;
         currentPreviewPageId = page.id;
+        resetLightboxZoom(false);
         const idx = pagesData.findIndex(p => p.id === page.id);
         updateLightboxUI(page, idx >= 0 ? idx : 0);
         dom.previewModal.style.display = "flex";
@@ -2249,6 +2403,7 @@
     function updateLightboxUI(page, idx) {
         if (!page) return;
         currentPreviewPageId = page.id;
+        resetLightboxZoom(false);
         dom.modalPageTitle.textContent = page.name || "Tài liệu";
         dom.modalPageDim.textContent = `${page.width} × ${page.height} px`;
         if (dom.modalPageCounter) {
@@ -2293,6 +2448,7 @@
     function closeModal() {
         dom.previewModal.style.display = "none";
         dom.modalPreviewImg.src = "";
+        resetLightboxZoom(false);
         currentPreviewPageId = null;
     }
 
