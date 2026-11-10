@@ -116,6 +116,7 @@ class PageSetupRequest(BaseModel):
 class DocumentPageSetupRequest(BaseModel):
     page_size: str = "fit_image"          # "fit_image", "A4", "letter"
     orientation: str = "portrait"         # "portrait", "landscape"
+    placement: Optional[str] = None       # "fill", "fit", "center"
 
 
 class AutoDetectCornersRequest(BaseModel):
@@ -424,11 +425,12 @@ async def crop_page_margins(req: CropMarginsRequest):
 @app.post("/api/document/page-setup")
 async def set_document_page_setup_api(req: DocumentPageSetupRequest):
     """Thiết lập khổ trang đồng nhất cho TOÀN BỘ file tài liệu (Document-Level Page Setup)."""
-    count = manager.set_document_page_size(req.page_size, req.orientation)
+    count = manager.set_document_page_size(req.page_size, req.orientation, req.placement)
     return {
         "success": True,
         "doc_page_size": manager.doc_page_size,
         "doc_orientation": manager.doc_orientation,
+        "doc_placement": getattr(manager, "doc_placement", "fill"),
         "count": count,
         "pages": manager.list_pages(),
     }

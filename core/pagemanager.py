@@ -441,18 +441,28 @@ class PageManager:
     def __init__(self):
         self._lock = threading.RLock()
         self._pages: List[PageItem] = []
-        # Khổ trang tài liệu áp dụng TOÀN CỤC cho toàn file (Mặc định chuẩn văn phòng: A4 Dọc)
+        # Khổ trang tài liệu áp dụng TOÀN CỤC cho toàn file (Mặc định: A4 hoặc Letter)
         self.doc_page_size: str = "A4"
         self.doc_orientation: str = "portrait"
+        self.doc_placement: str = "fill"  # "fill" (tràn viền không lề trắng), "fit" (vừa vặn), "center"
 
-    def set_document_page_size(self, page_size: str = "fit_image", orientation: str = "portrait") -> int:
+    def set_document_page_size(
+        self,
+        page_size: str = "A4",
+        orientation: str = "portrait",
+        placement: Optional[str] = None
+    ) -> int:
         """Thiết lập khổ trang đồng nhất cho TOÀN BỘ file tài liệu (Document Page Size)."""
         with self._lock:
             self.doc_page_size = page_size
             self.doc_orientation = orientation
+            if placement is not None:
+                self.doc_placement = placement
             for p in self._pages:
                 p.page_size = page_size
                 p.orientation = orientation
+                if placement is not None:
+                    p.image_placement = placement
                 p.invalidate_cache()
             return len(self._pages)
 
@@ -462,6 +472,7 @@ class PageManager:
             item = PageItem(page_id, name, img_bgr)
             item.page_size = self.doc_page_size
             item.orientation = self.doc_orientation
+            item.image_placement = self.doc_placement
             self._pages.append(item)
             return item
 
@@ -469,12 +480,27 @@ class PageManager:
         rendered = render_pdf_to_images(pdf_bytes, dpi=dpi)
         created_items = []
         with self._lock:
+            # Tự động nhận diện khổ trang của PDF nạp vào (US Letter hay A4)
+            if not self._pages and rendered:
+                first_img = rendered[0][0]
+                fh, fw = first_img.shape[:2]
+                ratio = min(fw, fh) / max(1, max(fw, fh))
+                # US Letter: 8.5 / 11 = 0.7727
+                # A4: 210 / 297 = 0.7071
+                if abs(ratio - (8.5 / 11.0)) < 0.04:
+                    self.doc_page_size = "letter"
+                    self.doc_orientation = "landscape" if fw > fh else "portrait"
+                elif abs(ratio - (210.0 / 297.0)) < 0.04:
+                    self.doc_page_size = "A4"
+                    self.doc_orientation = "landscape" if fw > fh else "portrait"
+
             for idx, (bgr, label) in enumerate(rendered):
                 page_id = uuid.uuid4().hex[:12]
                 item_name = f"{name} ({label})" if len(rendered) > 1 else name
                 item = PageItem(page_id, item_name, bgr)
                 item.page_size = self.doc_page_size
                 item.orientation = self.doc_orientation
+                item.image_placement = self.doc_placement
                 self._pages.append(item)
                 created_items.append(item)
         return created_items

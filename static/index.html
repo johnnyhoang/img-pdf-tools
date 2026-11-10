@@ -66,10 +66,15 @@
                             <i class="fa-solid fa-file-invoice text-accent"></i> <span id="lblCurrentPageSize">Khổ trang: A4 Dọc</span> <i class="fa-solid fa-chevron-down ml-1"></i>
                         </button>
                         <div class="dropdown-menu" id="pageSetupMenu">
-                            <button class="dropdown-item active" data-pagesize="A4" data-orientation="portrait"><i class="fa-solid fa-file mr-1"></i> A4 Dọc</button>
-                            <button class="dropdown-item" data-pagesize="A4" data-orientation="landscape"><i class="fa-solid fa-file mr-1"></i> A4 Ngang</button>
-                            <button class="dropdown-item" data-pagesize="letter" data-orientation="portrait"><i class="fa-solid fa-file-lines mr-1"></i> Letter Dọc (8.5 × 11")</button>
-                            <button class="dropdown-item" data-pagesize="letter" data-orientation="landscape"><i class="fa-solid fa-file-lines mr-1"></i> Letter Ngang (11 × 8.5")</button>
+                            <div class="dropdown-header">Khổ US Letter (Mỹ)</div>
+                            <button class="dropdown-item" data-pagesize="letter" data-orientation="portrait" data-placement="fill"><i class="fa-solid fa-maximize text-accent mr-1"></i> Letter Dọc - Tràn viền (Fill không lề)</button>
+                            <button class="dropdown-item" data-pagesize="letter" data-orientation="portrait" data-placement="fit"><i class="fa-solid fa-file-lines mr-1"></i> Letter Dọc - Vừa vặn (Fit)</button>
+                            <button class="dropdown-item" data-pagesize="letter" data-orientation="landscape" data-placement="fill"><i class="fa-solid fa-maximize text-accent mr-1"></i> Letter Ngang - Tràn viền (Fill)</button>
+                            <div class="dropdown-header">Khổ A4 (Việt Nam / Quốc tế)</div>
+                            <button class="dropdown-item" data-pagesize="A4" data-orientation="portrait" data-placement="fill"><i class="fa-solid fa-maximize text-accent mr-1"></i> A4 Dọc - Tràn viền (Fill không lề)</button>
+                            <button class="dropdown-item active" data-pagesize="A4" data-orientation="portrait" data-placement="fit"><i class="fa-solid fa-file mr-1"></i> A4 Dọc - Vừa vặn (Fit)</button>
+                            <button class="dropdown-item" data-pagesize="A4" data-orientation="landscape" data-placement="fill"><i class="fa-solid fa-maximize text-accent mr-1"></i> A4 Ngang - Tràn viền (Fill)</button>
+                            <div class="dropdown-header">Khác</div>
                             <button class="dropdown-item" data-pagesize="fit_image"><i class="fa-regular fa-image mr-1"></i> Vừa khít ảnh</button>
                         </div>
                     </div>
@@ -199,6 +204,24 @@
                                 <button type="button" class="btn-seg-layout" data-size="fit_image">
                                     <i class="fa-regular fa-image"></i>
                                     <span>Vừa khít ảnh</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Bố cục ảnh trên trang:</label>
+                            <div class="seg-layout-buttons" id="docPlacementButtons">
+                                <button type="button" class="btn-seg-layout active" data-placement="fill" title="Phóng to phủ kín trang, loại bỏ hoàn toàn viền trắng thừa trên dưới">
+                                    <i class="fa-solid fa-maximize text-accent"></i>
+                                    <span>Tràn viền (Fill)</span>
+                                </button>
+                                <button type="button" class="btn-seg-layout" data-placement="fit" title="Toàn bộ hình nằm trọn vẹn trong trang giấy">
+                                    <i class="fa-solid fa-compress"></i>
+                                    <span>Vừa vặn (Fit)</span>
+                                </button>
+                                <button type="button" class="btn-seg-layout" data-placement="center" title="Giữ nguyên kích thước pixel gốc">
+                                    <i class="fa-solid fa-crosshairs"></i>
+                                    <span>Căn giữa</span>
                                 </button>
                             </div>
                         </div>

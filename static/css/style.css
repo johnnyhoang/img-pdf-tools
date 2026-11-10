@@ -250,6 +250,28 @@ body {
     color: var(--accent);
 }
 
+.dropdown-item.active {
+    background: #eff6ff;
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.dropdown-header {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    padding: 6px 10px 3px;
+    border-top: 1px solid var(--border-color);
+    margin-top: 4px;
+}
+
+.dropdown-header:first-child {
+    border-top: none;
+    margin-top: 0;
+}
+
 /* DROPZONE */
 .dropzone {
     background: #ffffff;

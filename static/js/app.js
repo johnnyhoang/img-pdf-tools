@@ -13,8 +13,9 @@
     let editingBaseW = 0;
     let editingBaseH = 0;
     let editingAspectRatio = 1.0;
-    let docPageSize = "A4";
+    let docPageSize = "letter";
     let docOrientation = "portrait";
+    let docPlacement = "fill";
     let currentScalePct = 100;
     let draggedElement = null;
     let stitchPreviewTimeout = null;
@@ -47,6 +48,7 @@
         lblCurrentPageSize: document.getElementById("lblCurrentPageSize"),
         pageSetupMenu: document.getElementById("pageSetupMenu"),
         docPageSizeButtons: document.getElementById("docPageSizeButtons"),
+        docPlacementButtons: document.getElementById("docPlacementButtons"),
         btnBatchResize: document.getElementById("btnBatchResize"),
         btnRotateSelected: document.getElementById("btnRotateSelected"),
         btnReverseOrder: document.getElementById("btnReverseOrder"),
@@ -262,8 +264,9 @@
                 item.addEventListener("click", () => {
                     const pageSize = item.getAttribute("data-pagesize") || "fit_image";
                     const orientation = item.getAttribute("data-orientation") || "portrait";
+                    const placement = item.getAttribute("data-placement") || (pageSize === "fit_image" ? "fit" : docPlacement);
                     dom.pageSetupMenu.classList.remove("show");
-                    setDocumentPageSize(pageSize, orientation);
+                    setDocumentPageSize(pageSize, orientation, placement);
                 });
             });
 
@@ -278,7 +281,17 @@
                 btn.addEventListener("click", () => {
                     const pageSize = btn.getAttribute("data-size") || "fit_image";
                     const orientation = btn.getAttribute("data-orient") || "portrait";
-                    setDocumentPageSize(pageSize, orientation);
+                    setDocumentPageSize(pageSize, orientation, docPlacement);
+                });
+            });
+        }
+
+        // Thiết lập chế độ bố cục ảnh trên trang (Fill tràn viền / Fit vừa vặn)
+        if (dom.docPlacementButtons) {
+            dom.docPlacementButtons.querySelectorAll(".btn-seg-layout").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const placement = btn.getAttribute("data-placement") || "fill";
+                    setDocumentPageSize(docPageSize, docOrientation, placement);
                 });
             });
         }
@@ -1105,17 +1118,22 @@
     // ==========================================
     // THIẾT LẬP KHỔ TRANG TÀI LIỆU (DOCUMENT-LEVEL)
     // ==========================================
-    async function setDocumentPageSize(pageSize, orientation = "portrait") {
+    async function setDocumentPageSize(pageSize, orientation = "portrait", placement = null) {
         docPageSize = pageSize;
         docOrientation = orientation;
+        if (placement !== null) {
+            docPlacement = placement;
+        }
         updateDocPageSizeUI();
 
-        showToast(`Đang chuyển toàn file sang khổ ${pageSize === 'fit_image' ? 'Vừa khít ảnh' : (orientation === 'landscape' ? 'A4 Ngang' : 'A4 Dọc')}...`, "info");
+        const placementLabel = docPlacement === "fill" ? "Tràn viền không lề" : (docPlacement === "fit" ? "Vừa vặn" : "");
+        const sizeLabel = pageSize === 'fit_image' ? 'Vừa khít ảnh' : ((pageSize.toLowerCase() === 'letter' ? 'Letter ' : 'A4 ') + (orientation === 'landscape' ? 'Ngang' : 'Dọc'));
+        showToast(`Đang chuyển sang khổ ${sizeLabel}${placementLabel ? ' (' + placementLabel + ')' : ''}...`, "info");
         try {
             const res = await fetch("/api/document/page-setup", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ page_size: pageSize, orientation: orientation }),
+                body: JSON.stringify({ page_size: pageSize, orientation: orientation, placement: docPlacement }),
             });
             const data = await res.json();
             if (data.success) {
@@ -1124,7 +1142,7 @@
                 scheduleStitchPreview(300);
                 scheduleEstimateSize(200);
                 scheduleEstimatePdf(150);
-                showToast(`Đã áp dụng khổ trang cho toàn bộ ${pagesData.length} trang!`, "success");
+                showToast(`Đã áp dụng ${sizeLabel} cho toàn bộ ${pagesData.length} trang!`, "success");
             }
         } catch (e) {
             showToast("Có lỗi xảy ra khi đổi khổ trang.", "error");
@@ -1134,6 +1152,7 @@
     function updateDocPageSizeUI() {
         let label = "Vừa khít ảnh";
         const normSize = (docPageSize || "").toLowerCase();
+        const placementLabel = docPlacement === "fill" ? "Tràn viền" : (docPlacement === "fit" ? "Vừa vặn" : "");
         if (normSize === "letter") {
             label = docOrientation === "landscape" ? "Letter Ngang" : "Letter Dọc";
         } else if (normSize === "a4") {
@@ -1141,13 +1160,17 @@
         } else if (docPageSize !== "fit_image") {
             label = `${docPageSize} (${docOrientation === "landscape" ? "Ngang" : "Dọc"})`;
         }
+        if (placementLabel && docPageSize !== "fit_image") {
+            label += ` - ${placementLabel}`;
+        }
         if (dom.lblCurrentPageSize) dom.lblCurrentPageSize.textContent = `Khổ trang: ${label}`;
 
         if (dom.pageSetupMenu) {
             dom.pageSetupMenu.querySelectorAll(".dropdown-item").forEach(item => {
                 const s = (item.getAttribute("data-pagesize") || "").toLowerCase();
                 const o = item.getAttribute("data-orientation") || "portrait";
-                const isMatch = (s === normSize) && (s === "fit_image" || o === docOrientation);
+                const p = item.getAttribute("data-placement") || "fill";
+                const isMatch = (s === normSize) && (s === "fit_image" || (o === docOrientation && p === docPlacement));
                 item.classList.toggle("active", isMatch);
             });
         }
@@ -1158,6 +1181,13 @@
                 const o = btn.getAttribute("data-orient") || "portrait";
                 const isMatch = (s === normSize) && (s === "fit_image" || o === docOrientation);
                 btn.classList.toggle("active", isMatch);
+            });
+        }
+
+        if (dom.docPlacementButtons) {
+            dom.docPlacementButtons.querySelectorAll(".btn-seg-layout").forEach(btn => {
+                const p = btn.getAttribute("data-placement");
+                btn.classList.toggle("active", p === docPlacement);
             });
         }
     }
@@ -1173,6 +1203,8 @@
     let modalFilterMode = "original";
     let draggingCornerIdx = -1;
     let canvasScale = 1.0;
+    let modalPageSize = "letter";
+    let modalImagePlacement = "fill";
 
     const CORNER_LABELS_4 = [
         "Góc trên - trái",
@@ -1197,6 +1229,8 @@
         editingBaseW = page.image_width || page.width;
         editingBaseH = page.image_height || page.height;
         editingAspectRatio = editingBaseW / Math.max(1, editingBaseH);
+        modalPageSize = page.page_size || docPageSize || "letter";
+        modalImagePlacement = page.image_placement || docPlacement || "fill";
 
         dom.cropModalTitle.innerHTML = isBatchMode && selectedPageIds.size > 0
             ? `<i class="fa-solid fa-wand-magic-sparkles text-accent"></i> Chỉnh sửa ${selectedPageIds.size} ảnh đã chọn`
@@ -1661,10 +1695,13 @@
             [x0, y1]
         ];
 
+        modalPageSize = type === "letter" ? "letter" : "A4";
+        modalImagePlacement = "fill";
+
         updateBookSpreadUI();
         drawCropCanvas();
         updateDimensionsFromCorners();
-        showToast(`Đã căn 4 góc cắt chuẩn tỷ lệ ${label}!`, "success");
+        showToast(`Đã căn 4 góc cắt chuẩn tỷ lệ ${label} (Tràn viền)!`, "success");
     }
 
     function handleTrimMargin(marginFactor) {
@@ -1714,6 +1751,8 @@
         if (preset === "letter_fill") {
             // US Letter (8.5 x 11 inches = 1700 x 2200 px @ 200 DPI)
             // FILL: Phóng to lấp đầy toàn bộ khổ giấy, không chừa viền trắng
+            modalPageSize = "letter";
+            modalImagePlacement = "fill";
             const sheetW = isHorizontal ? 2200 : 1700;
             const sheetH = isHorizontal ? 1700 : 2200;
             if (dom.chkLockAspect && dom.chkLockAspect.checked) {
@@ -1726,6 +1765,8 @@
             }
         } else if (preset === "letter_fit") {
             // FIT: Co vừa vặn trọn vẹn trong khổ US Letter
+            modalPageSize = "letter";
+            modalImagePlacement = "fit";
             const sheetW = isHorizontal ? 2200 : 1700;
             const sheetH = isHorizontal ? 1700 : 2200;
             if (dom.chkLockAspect && dom.chkLockAspect.checked) {
@@ -1739,6 +1780,8 @@
         } else if (preset === "a4_fill") {
             // A4: 1654 x 2339 px @ 200 DPI
             // FILL: Phóng to lấp đầy toàn bộ khổ A4
+            modalPageSize = "A4";
+            modalImagePlacement = "fill";
             const sheetW = isHorizontal ? 2339 : 1654;
             const sheetH = isHorizontal ? 1654 : 2339;
             if (dom.chkLockAspect && dom.chkLockAspect.checked) {
@@ -1751,6 +1794,8 @@
             }
         } else if (preset === "a4_fit") {
             // FIT: Co vừa vặn trọn vẹn trong khổ A4
+            modalPageSize = "A4";
+            modalImagePlacement = "fit";
             const sheetW = isHorizontal ? 2339 : 1654;
             const sheetH = isHorizontal ? 1654 : 2339;
             if (dom.chkLockAspect && dom.chkLockAspect.checked) {
@@ -1831,6 +1876,8 @@
                     width: targetW,
                     height: targetH,
                     image_scale: 1.0,
+                    page_size: modalPageSize,
+                    image_placement: modalImagePlacement,
                     apply_to_selected: isAllSelected,
                     selected_page_ids: Array.from(selectedPageIds)
                 }),
