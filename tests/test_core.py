@@ -200,6 +200,39 @@ def test_core_flow():
     assert np.all(canvas_img[1000, 1654 - 130:] == 255), "Lề phải trên trang A4 phải là nền trắng, không bị tràn mép"
     print(f"   -> Preset Passport 2 mặt chuẩn xác: Hình {p_pass_info['image_width']}x{p_pass_info['image_height']} px (scale={p_pass_info['image_scale']}), lọt gọn trên canvas A4 {canvas_img.shape[1]}x{canvas_img.shape[0]} px!")
 
+    print("12. Kiểm tra khổ US Letter (Fill & Fit) và xuất PDF...")
+    img_letter_src = np.full((1200, 1000, 3), (120, 150, 180), dtype=np.uint8)
+    p_let = pm.add_image("test_us_letter.jpg", img_letter_src)
+    p_let_item = pm.get_page(p_let.id)
+
+    # 12.1. Letter Fill
+    p_let_item.setup_page_canvas(page_size="letter", orientation="portrait", placement="fill")
+    let_fill_canvas = p_let_item.get_processed_image()
+    assert let_fill_canvas.shape == (2200, 1700, 3), f"Khổ canvas Letter Dọc phải là (2200, 1700, 3), nhận: {let_fill_canvas.shape}"
+    # Vì là placement="fill", 4 góc của tờ giấy phải được lấp đầy hoàn toàn bằng màu ảnh (120, 150, 180), không bị viền trắng (255, 255, 255)
+    assert np.all(let_fill_canvas[0, 0] == (120, 150, 180)), "Góc trên-trái phải được phủ kín không viền trắng"
+    assert np.all(let_fill_canvas[2199, 1699] == (120, 150, 180)), "Góc dưới-phải phải được phủ kín không viền trắng"
+    print("   -> Letter Fill: Hình ảnh đã phóng to lấp đầy hoàn toàn trang Letter 1700x2200 px không còn viền trắng!")
+
+    # 12.2. Letter Fit
+    p_let_item.setup_page_canvas(page_size="letter", orientation="portrait", placement="fit")
+    let_fit_canvas = p_let_item.get_processed_image()
+    assert let_fit_canvas.shape == (2200, 1700, 3)
+    # Vì ảnh 1000x1200 (tỷ lệ 0.833) thon ngang hơn khổ Letter 1700x2200 (0.772), nên fit chiều cao 2200px -> rộng 1833px tràn mép hoặc fit chiều rộng 1700px -> cao 2040px chừa lề trắng trên dưới
+    # Với 1000x1200: min(1700/1000, 2200/1200) = min(1.7, 1.833) = 1.7
+    # Width = 1700, Height = 2040 -> lề trên y = (2200 - 2040) // 2 = 80px lề trắng
+    assert np.all(let_fit_canvas[10, 850] == (255, 255, 255)), "Phần lề trên phải là màu trắng của trang giấy"
+    print("   -> Letter Fit: Hình ảnh co vừa vặn trong khổ Letter 1700x2200 px!")
+
+    # 12.3. Xuất PDF khổ Letter
+    pdf_bytes = build_pdf_from_pages([p_let_item], layout_mode="uniform_letter_portrait")
+    doc_check = fitz.open(stream=pdf_bytes, filetype="pdf")
+    assert len(doc_check) == 1
+    pdf_p = doc_check[0]
+    assert round(pdf_p.rect.width) == 612 and round(pdf_p.rect.height) == 792, f"Kích thước PDF Letter phải là 612x792 pt, nhận {pdf_p.rect}"
+    doc_check.close()
+    print("   -> Xuất PDF: Chuẩn khổ US Letter 612 x 792 pt (8.5 x 11 inches)!")
+
     print("\n===> TẤT CẢ CÁC KIỂM TRA ĐỀU THÀNH CÔNG RỰC RỠ! <===")
 
 

@@ -9,9 +9,13 @@ import fitz  # PyMuPDF
 # Các khổ giấy tiêu chuẩn trong PDF (Points: 1 inch = 72 pt)
 PAGE_SIZES_PT: Dict[str, Tuple[float, float]] = {
     "A4": (595.28, 841.89),
+    "a4": (595.28, 841.89),
     "A3": (841.89, 1190.55),
+    "a3": (841.89, 1190.55),
     "A5": (419.53, 595.28),
+    "a5": (419.53, 595.28),
     "letter": (612.0, 792.0),
+    "Letter": (612.0, 792.0),
 }
 
 
@@ -212,6 +216,12 @@ def build_pdf_from_pages(
         elif layout_mode == "uniform_a4_landscape":
             p_size = "A4"
             p_orient = "landscape"
+        elif layout_mode in ("uniform_letter_portrait", "letter_portrait"):
+            p_size = "letter"
+            p_orient = "portrait"
+        elif layout_mode in ("uniform_letter_landscape", "letter_landscape"):
+            p_size = "letter"
+            p_orient = "landscape"
 
         ih, iw = raw_img.shape[:2]
         target_edge = 2400 if normalize_res and max(ih, iw) > 3600 else None
@@ -226,16 +236,28 @@ def build_pdf_from_pages(
             continue
 
         # 2. Trường hợp Khung trang giấy chuẩn (A4, A3, Letter...)
-        base_w_pt, base_h_pt = PAGE_SIZES_PT.get(p_size, PAGE_SIZES_PT["A4"])
+        base_size = PAGE_SIZES_PT.get(p_size) or PAGE_SIZES_PT.get(str(p_size).lower()) or PAGE_SIZES_PT.get(str(p_size).upper()) or PAGE_SIZES_PT["A4"]
+        base_w_pt, base_h_pt = base_size
         if p_orient == "landscape":
             pw_pt, ph_pt = max(base_w_pt, base_h_pt), min(base_w_pt, base_h_pt)
         else:
             pw_pt, ph_pt = min(base_w_pt, base_h_pt), max(base_w_pt, base_h_pt)
 
-        # Tính kích thước thật của hình ảnh trên trang PDF theo tỷ lệ scale của người dùng (1.0 = 100%)
-        # KHÔNG tự động co dãn hay ép fill trang!
-        fit_w = float(iw) * pt_per_px * p_scale
-        fit_h = float(ih) * pt_per_px * p_scale
+        # Kích thước đặt hình ảnh trên trang PDF:
+        if p_placement == "fill":
+            # Phóng to lấp đầy tràn toàn bộ trang PDF (không viền trắng, cắt lẹm mép thừa)
+            fill_scale = max(pw_pt / float(iw), ph_pt / float(ih)) * p_scale
+            fit_w = float(iw) * fill_scale
+            fit_h = float(ih) * fill_scale
+        elif p_placement == "fit":
+            # Co vừa vặn toàn bộ ảnh vào trong trang PDF
+            fit_scale = min(pw_pt / float(iw), ph_pt / float(ih)) * p_scale
+            fit_w = float(iw) * fit_scale
+            fit_h = float(ih) * fit_scale
+        else:
+            # Kích thước thật theo tỷ lệ scale của người dùng (1.0 = 100%)
+            fit_w = float(iw) * pt_per_px * p_scale
+            fit_h = float(ih) * pt_per_px * p_scale
 
         offset_x = (pw_pt - fit_w) / 2.0
         if p_placement == "top":

@@ -107,14 +107,14 @@ class ScalePageRequest(BaseModel):
 class PageSetupRequest(BaseModel):
     page_ids: Optional[List[str]] = None
     page_id: Optional[str] = None
-    page_size: Optional[str] = None       # "A4", "A3", "A5", "letter", "fit_image"
+    page_size: Optional[str] = None       # "A4", "A3", "A5", "letter", "Letter", "fit_image"
     orientation: Optional[str] = None     # "portrait", "landscape"
-    placement: Optional[str] = None       # "center", "top", "fit"
+    placement: Optional[str] = None       # "center", "top", "bottom", "fit", "fill"
     scale_percent: Optional[float] = None # e.g. 50, 75, 100
 
 
 class DocumentPageSetupRequest(BaseModel):
-    page_size: str = "fit_image"          # "fit_image", "A4"
+    page_size: str = "fit_image"          # "fit_image", "A4", "letter"
     orientation: str = "portrait"         # "portrait", "landscape"
 
 
@@ -131,6 +131,8 @@ class PageEditRequest(BaseModel):
     width: Optional[int] = None
     height: Optional[int] = None
     image_scale: Optional[float] = None
+    page_size: Optional[str] = None
+    image_placement: Optional[str] = None
     apply_to_selected: bool = False
     selected_page_ids: Optional[List[str]] = None
 
@@ -374,6 +376,8 @@ async def edit_page_api(page_id: str, req: PageEditRequest):
             target_w=req.width,
             target_h=req.height,
             image_scale=req.image_scale,
+            page_size=req.page_size,
+            image_placement=req.image_placement,
         )
     return {"success": True, "pages": manager.list_pages()}
 

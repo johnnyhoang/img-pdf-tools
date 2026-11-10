@@ -11,17 +11,25 @@ from .pdf_engine import render_pdf_to_images, compress_image_to_bytes
 # Các khổ giấy tiêu chuẩn tại 200 DPI (Pixels)
 PAGE_SIZES_PX: Dict[str, Tuple[int, int]] = {
     "A4": (1654, 2339),
+    "a4": (1654, 2339),
     "A3": (2339, 3307),
+    "a3": (2339, 3307),
     "A5": (1165, 1654),
+    "a5": (1165, 1654),
     "letter": (1700, 2200),
+    "Letter": (1700, 2200),
 }
 
 # Các khổ giấy tiêu chuẩn trong PDF (Points: 1 inch = 72 pt)
 PAGE_SIZES_PT: Dict[str, Tuple[float, float]] = {
     "A4": (595.28, 841.89),
+    "a4": (595.28, 841.89),
     "A3": (841.89, 1190.55),
+    "a3": (841.89, 1190.55),
     "A5": (419.53, 595.28),
+    "a5": (419.53, 595.28),
     "letter": (612.0, 792.0),
+    "Letter": (612.0, 792.0),
 }
 
 
@@ -180,6 +188,8 @@ class PageItem:
         target_w: Optional[int] = None,
         target_h: Optional[int] = None,
         image_scale: Optional[float] = None,
+        page_size: Optional[str] = None,
+        image_placement: Optional[str] = None,
     ) -> bool:
         """
         Dựng lại ảnh làm việc (working_image) xác định từ ảnh gốc:
@@ -187,6 +197,7 @@ class PageItem:
         2. Xoay góc (nếu có rotation)
         3. Tăng cường màu sắc, độ sáng & độ tương phản
         4. Co giãn kích thước mục tiêu (nếu có target_w, target_h)
+        5. Thiết lập khổ trang (page_size) và chế độ đặt hình (image_placement: center, fill, fit...)
         """
         if corners is not None:
             self.corners = corners if (isinstance(corners, (list, tuple)) and len(corners) in (4, 6)) else None
@@ -202,6 +213,10 @@ class PageItem:
             self.target_width = int(target_w)
         if target_h is not None and target_h > 0:
             self.target_height = int(target_h)
+        if page_size is not None:
+            self.page_size = page_size
+        if image_placement is not None:
+            self.image_placement = image_placement
 
         if self.target_width and self.target_height:
             self.image_scale = 1.0  # Đã resize kích thước pixel cụ thể thì image_scale luôn là 1.0 (100%), không nhân đôi
@@ -277,7 +292,8 @@ class PageItem:
             return self._processed_image
 
         # 2. Khổ trang chuẩn giấy (A4, A3, A5, Letter)
-        base_w, base_h = PAGE_SIZES_PX.get(self.page_size, PAGE_SIZES_PX["A4"])
+        base_size = PAGE_SIZES_PX.get(self.page_size) or PAGE_SIZES_PX.get(str(self.page_size).lower()) or PAGE_SIZES_PX.get(str(self.page_size).upper()) or PAGE_SIZES_PX["A4"]
+        base_w, base_h = base_size
         if self.orientation == "landscape":
             canvas_w, canvas_h = max(base_w, base_h), min(base_w, base_h)
         else:
@@ -286,13 +302,24 @@ class PageItem:
         # Tạo tờ giấy nền trắng tinh
         canvas = np.full((canvas_h, canvas_w, 3), 255, dtype=np.uint8)
 
-        # Kích thước thật của hình ảnh theo tỷ lệ scale của người dùng (1.0 = 100% kích thước thật)
-        # KHÔNG tự động co dãn hay ép fill trang!
-        target_w = max(10, int(round(iw * self.image_scale)))
-        target_h = max(10, int(round(ih * self.image_scale)))
+        # Kích thước đặt hình ảnh trên trang:
+        if self.image_placement == "fill":
+            # Phóng to lấp đầy tràn toàn bộ trang giấy (không chừa viền trắng)
+            fill_scale = max(float(canvas_w) / float(iw), float(canvas_h) / float(ih)) * self.image_scale
+            target_w = max(10, int(round(iw * fill_scale)))
+            target_h = max(10, int(round(ih * fill_scale)))
+        elif self.image_placement == "fit":
+            # Co vừa vặn toàn bộ hình trong khung giấy
+            fit_scale = min(float(canvas_w) / float(iw), float(canvas_h) / float(ih)) * self.image_scale
+            target_w = max(10, int(round(iw * fit_scale)))
+            target_h = max(10, int(round(ih * fit_scale)))
+        else:
+            # Kích thước thật theo tỷ lệ scale của người dùng (1.0 = 100% kích thước thật)
+            target_w = max(10, int(round(iw * self.image_scale)))
+            target_h = max(10, int(round(ih * self.image_scale)))
 
-        if abs(self.image_scale - 1.0) > 0.01:
-            interp = cv2.INTER_AREA if self.image_scale < 1.0 else cv2.INTER_LANCZOS4
+        if abs(target_w - iw) > 1 or abs(target_h - ih) > 1:
+            interp = cv2.INTER_AREA if (target_w < iw or target_h < ih) else cv2.INTER_LANCZOS4
             placed_img = cv2.resize(raw_img, (target_w, target_h), interpolation=interp)
         else:
             placed_img = raw_img
@@ -377,7 +404,7 @@ class PageItem:
             abs(self.brightness) > 0.01 or
             self.contrast > 0.01 or
             iw != orig_w or ih != orig_h or
-            self.page_size != "A4" or
+            self.image_placement != "center" or
             abs(self.image_scale - 1.0) > 0.01
         )
 

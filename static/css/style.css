@@ -854,6 +854,10 @@ body {
     gap: 6px;
 }
 
+#docPageSizeButtons {
+    grid-template-columns: repeat(auto-fit, minmax(68px, 1fr));
+}
+
 .btn-seg-layout {
     background: #f8fafc;
     border: 1px solid var(--border-color);
@@ -1840,4 +1844,17 @@ body {
     border-color: var(--accent);
     color: #ffffff;
     font-weight: 600;
+}
+
+.quick-preset-chips-row .chip-btn.chip-highlight {
+    border-color: rgba(37, 99, 235, 0.4);
+    background: rgba(37, 99, 235, 0.05);
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.quick-preset-chips-row .chip-btn.chip-highlight:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #ffffff;
 }

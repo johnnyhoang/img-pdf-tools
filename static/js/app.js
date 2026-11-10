@@ -113,6 +113,8 @@
         btnToggleBookSpread: document.getElementById("btnToggleBookSpread"),
         lblToggleBookSpread: document.getElementById("lblToggleBookSpread"),
         btnFullFrameCorners: document.getElementById("btnFullFrameCorners"),
+        btnCropLetterFrame: document.getElementById("btnCropLetterFrame"),
+        btnCropA4Frame: document.getElementById("btnCropA4Frame"),
         btnTrimShrink: document.getElementById("btnTrimShrink"),
         btnTrimExpand: document.getElementById("btnTrimExpand"),
         btnModalRotateLeft: document.getElementById("btnModalRotateLeft"),
@@ -498,6 +500,8 @@
         if (dom.btnAutoDetectCorners) dom.btnAutoDetectCorners.addEventListener("click", handleAutoDetectCorners);
         if (dom.btnToggleBookSpread) dom.btnToggleBookSpread.addEventListener("click", handleToggleBookSpread);
         if (dom.btnFullFrameCorners) dom.btnFullFrameCorners.addEventListener("click", handleFullFrameCorners);
+        if (dom.btnCropLetterFrame) dom.btnCropLetterFrame.addEventListener("click", () => handleCropFrameRatio("letter"));
+        if (dom.btnCropA4Frame) dom.btnCropA4Frame.addEventListener("click", () => handleCropFrameRatio("a4"));
         if (dom.btnTrimShrink) dom.btnTrimShrink.addEventListener("click", () => handleTrimMargin(-0.02));
         if (dom.btnTrimExpand) dom.btnTrimExpand.addEventListener("click", () => handleTrimMargin(0.02));
         if (dom.btnModalRotateLeft) dom.btnModalRotateLeft.addEventListener("click", () => handleModalRotate(-90));
@@ -1033,23 +1037,31 @@
     }
 
     function updateDocPageSizeUI() {
-        const label = docPageSize === "fit_image" ? "Vừa khít ảnh" : (docOrientation === "landscape" ? "A4 Ngang" : "A4 Dọc");
+        let label = "Vừa khít ảnh";
+        const normSize = (docPageSize || "").toLowerCase();
+        if (normSize === "letter") {
+            label = docOrientation === "landscape" ? "Letter Ngang" : "Letter Dọc";
+        } else if (normSize === "a4") {
+            label = docOrientation === "landscape" ? "A4 Ngang" : "A4 Dọc";
+        } else if (docPageSize !== "fit_image") {
+            label = `${docPageSize} (${docOrientation === "landscape" ? "Ngang" : "Dọc"})`;
+        }
         if (dom.lblCurrentPageSize) dom.lblCurrentPageSize.textContent = `Khổ trang: ${label}`;
 
         if (dom.pageSetupMenu) {
             dom.pageSetupMenu.querySelectorAll(".dropdown-item").forEach(item => {
-                const s = item.getAttribute("data-pagesize");
+                const s = (item.getAttribute("data-pagesize") || "").toLowerCase();
                 const o = item.getAttribute("data-orientation") || "portrait";
-                const isMatch = (s === docPageSize) && (s === "fit_image" || o === docOrientation);
+                const isMatch = (s === normSize) && (s === "fit_image" || o === docOrientation);
                 item.classList.toggle("active", isMatch);
             });
         }
 
         if (dom.docPageSizeButtons) {
             dom.docPageSizeButtons.querySelectorAll(".btn-seg-layout").forEach(btn => {
-                const s = btn.getAttribute("data-size");
+                const s = (btn.getAttribute("data-size") || "").toLowerCase();
                 const o = btn.getAttribute("data-orient") || "portrait";
-                const isMatch = (s === docPageSize) && (s === "fit_image" || o === docOrientation);
+                const isMatch = (s === normSize) && (s === "fit_image" || o === docOrientation);
                 btn.classList.toggle("active", isMatch);
             });
         }
@@ -1513,6 +1525,53 @@
         showToast("Đã đặt góc bao trọn toàn bộ ảnh.", "info");
     }
 
+    function handleCropFrameRatio(type = "letter") {
+        if (!modalOriginalImg) return;
+        const w = modalOriginalImg.naturalWidth;
+        const h = modalOriginalImg.naturalHeight;
+        if (!w || !h) return;
+
+        const isHorizontal = w >= h;
+        let targetRatio;
+        let label;
+        if (type === "letter") {
+            // US Letter: 8.5 x 11 inches (1700 x 2200 px @ 200 DPI)
+            targetRatio = isHorizontal ? (11.0 / 8.5) : (8.5 / 11.0);
+            label = "US Letter (8.5 × 11\")";
+        } else {
+            // A4: 210 x 297 mm (1654 x 2339 px @ 200 DPI)
+            targetRatio = isHorizontal ? (297.0 / 210.0) : (210.0 / 297.0);
+            label = "A4 (210 × 297 mm)";
+        }
+
+        const currentRatio = w / h;
+        let cropW, cropH;
+        if (currentRatio > targetRatio) {
+            cropH = h;
+            cropW = Math.round(h * targetRatio);
+        } else {
+            cropW = w;
+            cropH = Math.round(w / targetRatio);
+        }
+
+        const x0 = Math.max(0, Math.round((w - cropW) / 2));
+        const y0 = Math.max(0, Math.round((h - cropH) / 2));
+        const x1 = Math.min(w - 1, x0 + cropW);
+        const y1 = Math.min(h - 1, y0 + cropH);
+
+        modalCorners = [
+            [x0, y0],
+            [x1, y0],
+            [x1, y1],
+            [x0, y1]
+        ];
+
+        updateBookSpreadUI();
+        drawCropCanvas();
+        updateDimensionsFromCorners();
+        showToast(`Đã căn 4 góc cắt chuẩn tỷ lệ ${label}!`, "success");
+    }
+
     function handleTrimMargin(marginFactor) {
         if (!modalCorners) return;
         const cx = modalCorners.reduce((s, p) => s + p[0], 0) / modalCorners.length;
@@ -1557,7 +1616,57 @@
         const isHorizontal = editingBaseW >= editingBaseH;
         let targetW, targetH;
 
-        if (preset === "passport") {
+        if (preset === "letter_fill") {
+            // US Letter (8.5 x 11 inches = 1700 x 2200 px @ 200 DPI)
+            // FILL: Phóng to lấp đầy toàn bộ khổ giấy, không chừa viền trắng
+            const sheetW = isHorizontal ? 2200 : 1700;
+            const sheetH = isHorizontal ? 1700 : 2200;
+            if (dom.chkLockAspect && dom.chkLockAspect.checked) {
+                const scale = Math.max(sheetW / editingBaseW, sheetH / editingBaseH);
+                targetW = Math.round(editingBaseW * scale);
+                targetH = Math.round(editingBaseH * scale);
+            } else {
+                targetW = sheetW;
+                targetH = sheetH;
+            }
+        } else if (preset === "letter_fit") {
+            // FIT: Co vừa vặn trọn vẹn trong khổ US Letter
+            const sheetW = isHorizontal ? 2200 : 1700;
+            const sheetH = isHorizontal ? 1700 : 2200;
+            if (dom.chkLockAspect && dom.chkLockAspect.checked) {
+                const scale = Math.min(sheetW / editingBaseW, sheetH / editingBaseH);
+                targetW = Math.round(editingBaseW * scale);
+                targetH = Math.round(editingBaseH * scale);
+            } else {
+                targetW = sheetW;
+                targetH = sheetH;
+            }
+        } else if (preset === "a4_fill") {
+            // A4: 1654 x 2339 px @ 200 DPI
+            // FILL: Phóng to lấp đầy toàn bộ khổ A4
+            const sheetW = isHorizontal ? 2339 : 1654;
+            const sheetH = isHorizontal ? 1654 : 2339;
+            if (dom.chkLockAspect && dom.chkLockAspect.checked) {
+                const scale = Math.max(sheetW / editingBaseW, sheetH / editingBaseH);
+                targetW = Math.round(editingBaseW * scale);
+                targetH = Math.round(editingBaseH * scale);
+            } else {
+                targetW = sheetW;
+                targetH = sheetH;
+            }
+        } else if (preset === "a4_fit") {
+            // FIT: Co vừa vặn trọn vẹn trong khổ A4
+            const sheetW = isHorizontal ? 2339 : 1654;
+            const sheetH = isHorizontal ? 1654 : 2339;
+            if (dom.chkLockAspect && dom.chkLockAspect.checked) {
+                const scale = Math.min(sheetW / editingBaseW, sheetH / editingBaseH);
+                targetW = Math.round(editingBaseW * scale);
+                targetH = Math.round(editingBaseH * scale);
+            } else {
+                targetW = sheetW;
+                targetH = sheetH;
+            }
+        } else if (preset === "passport") {
             // Passport 88 x 125 mm (~693 x 984 px @ 200 DPI)
             if (isHorizontal) {
                 targetH = 693;
@@ -1725,10 +1834,19 @@
         estimatePdfTimeout = setTimeout(fetchEstimatePdf, delay);
     }
 
+    function getActiveLayoutMode() {
+        if (docPageSize === "fit_image") return "original";
+        const normSize = (docPageSize || "").toLowerCase();
+        if (normSize === "letter") {
+            return docOrientation === "landscape" ? "uniform_letter_landscape" : "uniform_letter_portrait";
+        }
+        return docOrientation === "landscape" ? "uniform_a4_landscape" : "uniform_a4_portrait";
+    }
+
     async function fetchEstimatePdf() {
         if (pagesData.length === 0) return;
 
-        const layoutMode = docPageSize === "fit_image" ? "original" : (docOrientation === "landscape" ? "uniform_a4_landscape" : "uniform_a4_portrait");
+        const layoutMode = getActiveLayoutMode();
         const quality = parseInt(dom.pdfQuality.value, 10) || 85;
         const targetIds = selectedPageIds.size > 0 ? Array.from(selectedPageIds) : null;
 
@@ -1759,7 +1877,7 @@
             return showToast("Chưa có trang nào để xuất PDF.", "error");
         }
 
-        const layoutMode = docPageSize === "fit_image" ? "original" : (docOrientation === "landscape" ? "uniform_a4_landscape" : "uniform_a4_portrait");
+        const layoutMode = getActiveLayoutMode();
         const quality = parseInt(dom.pdfQuality.value, 10) || 85;
         const filename = (dom.pdfFilename.value.trim() || "tai_lieu_dong_nhat") + ".pdf";
 
@@ -1897,7 +2015,7 @@
         );
         if (!confirmed) return;
 
-        const layoutMode = docPageSize === "fit_image" ? "original" : (docOrientation === "landscape" ? "uniform_a4_landscape" : "uniform_a4_portrait");
+        const layoutMode = getActiveLayoutMode();
         const quality = parseInt(dom.pdfQuality.value, 10) || 85;
 
         showToast("Đang xử lý và lưu đè file PDF...", "info");
@@ -1933,7 +2051,7 @@
             return showToast("Chưa có trang nào để lưu.", "error");
         }
 
-        const layoutMode = docPageSize === "fit_image" ? "original" : (docOrientation === "landscape" ? "uniform_a4_landscape" : "uniform_a4_portrait");
+        const layoutMode = getActiveLayoutMode();
         const quality = parseInt(dom.pdfQuality.value, 10) || 85;
         const filename = (dom.pdfFilename.value.trim() || "tai_lieu_dong_nhat") + ".pdf";
 

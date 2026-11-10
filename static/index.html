@@ -68,6 +68,8 @@
                         <div class="dropdown-menu" id="pageSetupMenu">
                             <button class="dropdown-item active" data-pagesize="A4" data-orientation="portrait"><i class="fa-solid fa-file mr-1"></i> A4 Dọc</button>
                             <button class="dropdown-item" data-pagesize="A4" data-orientation="landscape"><i class="fa-solid fa-file mr-1"></i> A4 Ngang</button>
+                            <button class="dropdown-item" data-pagesize="letter" data-orientation="portrait"><i class="fa-solid fa-file-lines mr-1"></i> Letter Dọc (8.5 × 11")</button>
+                            <button class="dropdown-item" data-pagesize="letter" data-orientation="landscape"><i class="fa-solid fa-file-lines mr-1"></i> Letter Ngang (11 × 8.5")</button>
                             <button class="dropdown-item" data-pagesize="fit_image"><i class="fa-regular fa-image mr-1"></i> Vừa khít ảnh</button>
                         </div>
                     </div>
@@ -185,6 +187,14 @@
                                 <button type="button" class="btn-seg-layout" data-size="A4" data-orient="landscape">
                                     <i class="fa-solid fa-file"></i>
                                     <span>A4 Ngang</span>
+                                </button>
+                                <button type="button" class="btn-seg-layout" data-size="letter" data-orient="portrait">
+                                    <i class="fa-solid fa-file-lines"></i>
+                                    <span>Letter Dọc</span>
+                                </button>
+                                <button type="button" class="btn-seg-layout" data-size="letter" data-orient="landscape">
+                                    <i class="fa-solid fa-file-lines"></i>
+                                    <span>Letter Ngang</span>
                                 </button>
                                 <button type="button" class="btn-seg-layout" data-size="fit_image">
                                     <i class="fa-regular fa-image"></i>
@@ -482,6 +492,12 @@
                         <button type="button" class="btn-stage-tool" id="btnFullFrameCorners" title="Đặt 4 góc bao trọn ảnh">
                             <i class="fa-solid fa-border-all"></i> Trọn ảnh
                         </button>
+                        <button type="button" class="btn-stage-tool" id="btnCropLetterFrame" title="Căn 4 góc cắt chuẩn tỷ lệ US Letter (8.5 × 11)">
+                            <i class="fa-solid fa-crop-simple text-accent"></i> Khung Letter
+                        </button>
+                        <button type="button" class="btn-stage-tool" id="btnCropA4Frame" title="Căn 4 góc cắt chuẩn tỷ lệ A4">
+                            <i class="fa-solid fa-crop-simple"></i> Khung A4
+                        </button>
                         <div class="stage-tool-divider"></div>
                         <button type="button" class="btn-stage-tool" id="btnTrimShrink" title="Thu hẹp lề cắt (-2%)">
                             <i class="fa-solid fa-compress"></i> Thu lề
@@ -566,8 +582,12 @@
 
                         <!-- 3 Presets chuẩn theo yêu cầu: Passport, Passport 2 mặt, Card -->
                         <div class="form-group mt-2">
-                            <label class="form-label">Khổ chuẩn:</label>
+                            <label class="form-label">Khổ chuẩn & Tùy chọn Fill / Fit:</label>
                             <div class="quick-preset-chips-row" id="docTypePresets">
+                                <button type="button" class="chip-btn chip-highlight" data-preset="letter_fill" title="Phóng to lấp đầy tràn khổ US Letter (1700 × 2200 px)">Letter (Fill)</button>
+                                <button type="button" class="chip-btn" data-preset="letter_fit" title="Thu phóng vừa vặn trong khổ US Letter (1700 × 2200 px)">Letter (Fit)</button>
+                                <button type="button" class="chip-btn chip-highlight" data-preset="a4_fill" title="Phóng to lấp đầy tràn khổ A4 (1654 × 2339 px)">A4 (Fill)</button>
+                                <button type="button" class="chip-btn" data-preset="a4_fit" title="Thu phóng vừa vặn trong khổ A4 (1654 × 2339 px)">A4 (Fit)</button>
                                 <button type="button" class="chip-btn" data-preset="passport">Passport</button>
                                 <button type="button" class="chip-btn" data-preset="passport_double">Passport 2 mặt</button>
                                 <button type="button" class="chip-btn" data-preset="card">Card</button>
